@@ -1,0 +1,172 @@
+<html>
+<head>
+<title>Color Dictionary</title>
+</head>
+<body>
+
+<script type="text/javascript" src="js/jscolor/jscolor.js"></script>
+<script type="text/javascript" src="js/sprintf/sprintf-0.7-beta1.js"></script>
+<script type="text/javascript" src="js/main.js"></script>
+
+<script type="text/javascript" src="js/colorsources/crayola.js"></script>
+<script type="text/javascript" src="js/colorsources/css.js"></script>
+<script type="text/javascript" src="js/colorsources/hp_cne.js"></script>
+<script type="text/javascript" src="js/colorsources/nbs_iscc.js"></script>
+<script type="text/javascript" src="js/colorsources/resene.js"></script>
+<script type="text/javascript" src="js/colorsources/x11.js"></script>
+
+<script>
+
+databases = [
+  crayolaDatabase,
+  cssDatabase,
+  hpCneDatabase,
+  nbsIsccDatabase,
+  reseneDatabase,
+  x11Database,
+];
+// Default:
+database = hpCneDatabase;
+
+debugEnabled = false;
+baseColor = 'FFFFFF';
+
+function setDebugData(results) {};
+
+function initColors() {
+
+  // Attach jscolor.color (without updates) to colorGuesser.
+  var colorGuesser = document.getElementById('colorGuesser');
+  colorGuesser.color = new jscolor.color(colorGuesser, {
+    'pickerOnfocus': false,
+    'valueElement': null,
+  });
+
+  // "Subclass" of jscolor.color, which exports colorGuesser on its own export.
+  var base_color = jscolor.color;
+  var colorHooked = function(target, prop) {
+
+    // "Inherit" parent methods.
+    this.base = base_color;
+    this.base(target, prop);
+    this.base = null;
+  
+    // "Override" exportColor.
+    this.base_exportColor = this.exportColor;
+    this.exportColor = function(flags) {
+      // Call superclass.
+      this.base_exportColor(flags);
+      // Find color in database.
+      var hex_str = this.toString();
+      var results = database.findNearest(RGB.fromHex(hex_str));
+      // Write debug info, if applicable.
+      setDebugData(results);
+      // Update colorGuesser.
+      var guess = results[0][1];
+      var colorGuesser = document.getElementById('colorGuesser');
+      colorGuesser.color.fromString(guess.rgb.toString());
+      colorGuesser.value = guess.name;
+    }
+
+    // Make the picker persistently visible.
+    this.hidePicker = function() {};
+    this.showPicker();
+  };
+
+  // Attach colorHooked subclass to colorPicker.
+  var colorPicker = document.getElementById('colorPickerImage');
+  colorPicker.color = new colorHooked(colorPicker, {
+    'valueElement': 'colorPickerText',
+    'styleElement': 'colorPickerText',
+  });
+  colorPicker.color.fromString(baseColor);
+
+  // Set the source select field.
+  var databaseSelect = document.getElementById('databaseSelect');
+  databaseSelect.value = database.name;
+}
+
+function forceUpdate() {
+  var colorPicker = document.getElementById('colorPickerImage');
+  colorPicker.color.exportColor();
+}
+
+function chooseDatabase(new_database) {
+  for (var i in databases) {
+    if (databases[i].name == new_database) {
+      database = databases[i];
+      forceUpdate();
+      break;
+    }
+  }
+}
+
+</script>
+
+<table>
+  <tr>
+    <td colspan=2 height=130 valign=top><div id="colorPickerImage"></div></td>
+  </tr>
+  <tr>
+    <td>Target color:</td>
+    <td><input id="colorPickerText"></td>
+  </tr>
+  <tr>
+    <td>Closest color:</td>
+    <td><input id="colorGuesser"></td>
+  </tr>
+  <tr>
+    <td>Source:</td>
+    <td>
+      <select onChange="chooseDatabase(this.value);" id="databaseSelect">
+        <script>
+        for (i in databases) {
+          document.write('<option>' + databases[i].name + '</option>');
+        }
+        </script>
+      </select>
+      <a href="javascript:document.location=database.source">[link]</a>
+    </td>
+  </tr>
+</table>
+
+<script>
+
+params = location.search.replace(/^\?/, '').split('&');
+for (var i in params) {
+  var key = params[i];
+  var pair = key.split('=');
+  if (pair.length == 2) {
+    var key = pair[0];
+    var val = pair[1];
+  }
+  if (key == 'debug') {
+    debugEnabled = true;
+  }
+  if (key == 'color') {
+    baseColor = val;
+  }
+}
+
+if (debugEnabled) {
+
+  document.write('<br><textarea rows=20 cols=80 id="debugWindow"></textarea>');
+
+  setDebugData = function(results) {
+    var debugWindow = document.getElementById('debugWindow');
+    var debugStr = "";
+    for (var i in results) {
+      debugStr = debugStr + results[i] + "\n";
+    }
+    debugWindow.value = debugStr;
+  }
+
+}
+
+//window.addEventListener('load', initColors);
+initColors();
+
+</script>
+
+</body>
+</html>
