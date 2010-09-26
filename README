@@ -1,0 +1,7 @@
+Author:
+Michael Bennett Curtis
+
+Source code for a simple Google AppEngine app:
+http://colordict.appspot.com
+
+Does reverse-lookups from a color RGB profile to the color name, as defined in one of several 
